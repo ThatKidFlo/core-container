@@ -1,6 +1,6 @@
 package com.upt.mse.barbuceanu.container.impl;
 
-import com.upt.mse.barbuceanu.container.annotations.Component;
+import com.upt.mse.barbuceanu.container.ContainerUtils;
 import com.upt.mse.barbuceanu.container.api.ApplicationContainer;
 import com.upt.mse.barbuceanu.container.exception.UnsatisfiedDependencyException;
 import io.vavr.control.Try;
@@ -14,16 +14,15 @@ import java.util.stream.Stream;
  * @author Florin-Gabriel Barbuceanu, florin.barbuceanu@sap.com
  * @since 12/11/2017
  */
-@Component
 public class DefaultApplicationContainer implements ApplicationContainer {
 
     private final Map<Class<?>, Object> container;
 
-    public DefaultApplicationContainer() {
+    private DefaultApplicationContainer() {
         container = new HashMap<>();
     }
 
-    public DefaultApplicationContainer(Map<Class<?>, Object> container) {
+    private DefaultApplicationContainer(Map<Class<?>, Object> container) {
         this.container = container;
     }
 
@@ -48,10 +47,16 @@ public class DefaultApplicationContainer implements ApplicationContainer {
     }
 
     @Override
+    public Map<Class<?>, Object> getBeans() {
+        return Collections
+                .unmodifiableMap(container);
+    }
+
+    @Override
     public <T> ApplicationContainer addBeanDefinition(Class<T> clazz) {
         System.out.println("A new bean has been added to the application container: " + clazz);
-        //find a way to instantiate
-        final Object beanInstance = getConstructorsSortedByParamCount(clazz)
+        final Object beanInstance = ContainerUtils
+                .getConstructorsSortedByParamCount(clazz)
                 .map(constructor -> {
                     System.out.println("Candidate constructor found: " + constructor);
                     return makeInstance(constructor);
@@ -67,6 +72,11 @@ public class DefaultApplicationContainer implements ApplicationContainer {
         container.put(clazz, beanInstance);
 
         return this;
+    }
+
+    @Override
+    public String toString() {
+        return "ApplicationContainer(" + container.toString() + ")";
     }
 
     private <T> Optional<T> makeInstance(Constructor<T> constructor) {
@@ -92,10 +102,18 @@ public class DefaultApplicationContainer implements ApplicationContainer {
                 }).toArray();
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> Stream<Constructor<T>> getConstructorsSortedByParamCount(Class<T> clazz) {
-        return Arrays
-                .stream((Constructor<T>[]) clazz.getConstructors())
-                .sorted(Comparator.comparingInt(Constructor::getParameterCount));
+    public static ApplicationContainer scanPackage(String basePackageToScan) {
+        final ApplicationContainer applicationContainer = new DefaultApplicationContainer();
+        return ContainerUtils
+                .scanPackageForComponents(basePackageToScan)
+                .stream()
+                .reduce(applicationContainer,
+                        (ApplicationContainer::addBeanDefinition),
+                        (firstContainer, secondContainer) -> {
+                            final Map<Class<?>, Object> combinedBeans = new HashMap<>();
+                            combinedBeans.putAll(firstContainer.getBeans());
+                            combinedBeans.putAll(secondContainer.getBeans());
+                            return new DefaultApplicationContainer(combinedBeans);
+                        });
     }
 }
