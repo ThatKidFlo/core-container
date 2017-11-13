@@ -102,11 +102,21 @@ public class DefaultApplicationContainer implements ApplicationContainer {
                 }).toArray();
     }
 
+    private static Comparator<Class<?>> smallestNumberOfConstructorParameters() {
+        return Comparator.comparing(cl -> ContainerUtils
+                .getConstructorsSortedByParamCount(cl)
+                .map(Constructor::getParameterCount)
+                // not the super hero we want, but the super we deserve -
+                // this should be safe because scanPackageForComponents only retrieves components that have constructors.
+                .min(Integer::compareTo).get());
+    }
+
     public static ApplicationContainer scanPackage(String basePackageToScan) {
         final ApplicationContainer applicationContainer = new DefaultApplicationContainer();
         return ContainerUtils
                 .scanPackageForComponents(basePackageToScan)
                 .stream()
+                .sorted(smallestNumberOfConstructorParameters())
                 .reduce(applicationContainer,
                         (ApplicationContainer::addBeanDefinition),
                         (firstContainer, secondContainer) -> {
