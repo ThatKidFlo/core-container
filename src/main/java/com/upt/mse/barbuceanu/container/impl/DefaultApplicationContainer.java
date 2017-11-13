@@ -8,7 +8,6 @@ import io.vavr.control.Try;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -52,8 +51,7 @@ public class DefaultApplicationContainer implements ApplicationContainer {
     public <T> ApplicationContainer addBeanDefinition(Class<T> clazz) {
         System.out.println("A new bean has been added to the application container: " + clazz);
         //find a way to instantiate
-        final Object beanInstance = getSortedConstructors(clazz)
-                .stream()
+        final Object beanInstance = getConstructorsSortedByParamCount(clazz)
                 .map(constructor -> {
                     System.out.println("Candidate constructor found: " + constructor);
                     return makeInstance(constructor);
@@ -65,6 +63,7 @@ public class DefaultApplicationContainer implements ApplicationContainer {
 
         System.out.println("Successfully created bean " + beanInstance + " of type " + clazz.getName());
 
+        //TODO:: add this bean instance for all the linear supertypes that it fulfills.
         container.put(clazz, beanInstance);
 
         return this;
@@ -93,10 +92,10 @@ public class DefaultApplicationContainer implements ApplicationContainer {
                 }).toArray();
     }
 
-    private static <T> List<Constructor<T>> getSortedConstructors(Class<T> clazz) {
+    @SuppressWarnings("unchecked")
+    private static <T> Stream<Constructor<T>> getConstructorsSortedByParamCount(Class<T> clazz) {
         return Arrays
                 .stream((Constructor<T>[]) clazz.getConstructors())
-                .sorted(Comparator.comparingInt(Constructor::getParameterCount))
-                .collect(Collectors.toList());
+                .sorted(Comparator.comparingInt(Constructor::getParameterCount));
     }
 }
