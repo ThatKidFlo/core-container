@@ -5,10 +5,7 @@ import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
 
 import java.lang.reflect.Constructor;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,5 +45,20 @@ public class ContainerUtils {
         } catch (ClassNotFoundException e) {
             return Optional.empty();
         }
+    }
+
+    public static Stream<Class<?>> buildClassHierarchy(Class<?> clazz) {
+        if (Objects.isNull(clazz) || clazz.equals(Object.class)) {
+            return Stream.empty();
+        }
+        final Stream.Builder<Class<?>> resultStream = Stream.builder();
+
+        resultStream.add(clazz);
+        Stream.of(clazz.getInterfaces())
+                .forEach(resultStream::add);
+        buildClassHierarchy(clazz.getSuperclass())
+                .forEach(resultStream::add);
+
+        return resultStream.build();
     }
 }

@@ -69,14 +69,21 @@ public class DefaultApplicationContainer implements ApplicationContainer {
         System.out.println("Successfully created bean " + beanInstance + " of type " + clazz.getName());
 
         //TODO:: add this bean instance for all the linear supertypes that it fulfills.
-        container.put(clazz, beanInstance);
+        addAsBeanForAllLinearSuperTypes(beanInstance, clazz);
 
         return this;
     }
 
+
     @Override
     public String toString() {
         return "ApplicationContainer(" + container.toString() + ")";
+    }
+
+    private void addAsBeanForAllLinearSuperTypes(Object beanInstance, Class<?> clazz) {
+        ContainerUtils
+                .buildClassHierarchy(clazz)
+                .forEach(aClass -> container.put(aClass, beanInstance));
     }
 
     private <T> Optional<T> makeInstance(Constructor<T> constructor) {
